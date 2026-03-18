@@ -4,10 +4,12 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 include { ALIGNBAM } from '../modules/local/alignbam'
+include { BCFTOOLS_VIEW } from '../modules/nf-core/bcftools/view/main'
 include { CIVICPY } from '../modules/local/civicpy/main'
 include { FASTP } from '../modules/nf-core/fastp/main'
 include { FASTQC } from '../modules/nf-core/fastqc/main'
 include { FGBIO_FASTQTOBAM } from '../modules/nf-core/fgbio/fastqtobam/main'
+include { GATK4_FILTERMUTECTCALLS } from '../modules/nf-core/gatk4/filtermutectcalls/main'
 include { GATK4_MUTECT2 } from '../modules/nf-core/gatk4/mutect2/main'
 include { GIT_CLONEMSISENSOR2MODEL } from '../modules/local/git/clonemsisensor2model/main'
 include { MSISENSOR2_MSI } from '../modules/nf-core/msisensor2/msi/main'
@@ -18,6 +20,7 @@ include { PICARD_MARKDUPLICATES } from '../modules/nf-core/picard/markduplicates
 include { PICARD_COLLECTMULTIPLEMETRICS } from '../modules/nf-core/picard/collectmultiplemetrics'
 include { PICARD_COLLECTHSMETRICS } from '../modules/nf-core/picard/collecthsmetrics/main'
 include { PICARD_INTERVALLISTTOBED } from '../modules/local/picard/intervallisttobed'
+include { TABIX_TABIX } from '../modules/nf-core/tabix/tabix'
 include { paramsSummaryMap } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -121,10 +124,32 @@ workflow TWISTCGP {
     ch_versions = ch_versions.mix(GATK4_MUTECT2.out.versions.first())
 
     //
+    // MODULE: GATK4/FILTERMUTECTCALLS
+    //
+    ch_filtermutect_in = GATK4_MUTECT2.out.vcf
+        .join(GATK4_MUTECT2.out.tbi)
+        .join(GATK4_MUTECT2.out.stats)
+        .map { meta, vcf, tbi, stats ->
+            tuple(meta, vcf, tbi, stats,
+                [], // orientationbias (unused)
+                [], // segmentation (unused)
+                [], // contamination table (unused)
+                [], // contamination estimate (unused)
+            )
+        }
+    GATK4_FILTERMUTECTCALLS(
+        ch_filtermutect_in,
+        ch_fasta,
+        ch_fasta_fai,
+        ch_dict,
+    )
+    ch_versions = ch_versions.mix(GATK4_FILTERMUTECTCALLS.out.versions.first())
+
+    //
     // SUB-WORKFLOW: VCF_ANNOTATE
     //
     VCF_ANNOTATE(
-        GATK4_MUTECT2.out.vcf,
+        GATK4_FILTERMUTECTCALLS.out.vcf,
         ch_fasta,
         snpeff_genome_info,
         ensemblvep_info,
@@ -136,16 +161,39 @@ workflow TWISTCGP {
     ch_multiqc_files = ch_multiqc_files.mix(VCF_ANNOTATE.out.reports)
 
     //
-    // MODULE: TMB
-    //
-    //
-    TMB(VCF_ANNOTATE.out.vcf_ann, targets, tmb_vep_config, tmb_mutect2_config)
-    ch_versions = ch_versions.mix(TMB.out.versions.first())
+    // MODULE: CIVICPY
+    CIVICPY(VCF_ANNOTATE.out.vcf_ann, params.annotation_genome_version)
+    ch_versions = ch_versions.mix(CIVICPY.out.versions.first())
 
     //
-    // MODULE: CIVICPY
+    // MODULE: BCFTOOLS_VIEW (pre-filter for TMB)
+    // Excludes CIVIC-annotated cancer hotspots (if not --skip_civicpy);
+    // applies quality/variant filters
     //
-    CIVICPY(VCF_ANNOTATE.out.vcf_ann, params.annotation_genome_version)
+
+    if (!params.skip_civicpy) {
+        TABIX_TABIX(CIVICPY.out.vcf)
+
+        ch_bcftools_in = CIVICPY.out.vcf
+            .join(TABIX_TABIX.out.tbi, by: 0)
+    } else {
+        ch_bcftools_in = VCF_ANNOTATE.out.vcf_ann
+    }
+
+    BCFTOOLS_VIEW(
+        ch_bcftools_in,
+        [], // regions (unused)
+        targets[1], // targets BED file
+        [], // samples (unused)
+    )
+    ch_pre_tmb_vcf_tbi = BCFTOOLS_VIEW.out.vcf
+        .join(BCFTOOLS_VIEW.out.tbi)
+
+    //
+    // MODULE: TMB
+    //
+    TMB(ch_pre_tmb_vcf_tbi, targets, tmb_vep_config, tmb_mutect2_config)
+    ch_versions = ch_versions.mix(TMB.out.versions.first())
 
     //
     // CNVKIT_BATCH

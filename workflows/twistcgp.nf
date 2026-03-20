@@ -10,6 +10,9 @@ include { FASTP } from '../modules/nf-core/fastp/main'
 include { FASTQC } from '../modules/nf-core/fastqc/main'
 include { FGBIO_FASTQTOBAM } from '../modules/nf-core/fgbio/fastqtobam/main'
 include { GATK4_FILTERMUTECTCALLS } from '../modules/nf-core/gatk4/filtermutectcalls/main'
+include { GATK4_CALCULATECONTAMINATION } from '../modules/nf-core/gatk4/calculatecontamination/main'
+include { GATK4_GETPILEUPSUMMARIES } from '../modules/nf-core/gatk4/getpileupsummaries/main'
+include { GATK4_LEARNREADORIENTATIONMODEL } from '../modules/nf-core/gatk4/learnreadorientationmodel/main'
 include { GATK4_MUTECT2 } from '../modules/nf-core/gatk4/mutect2/main'
 include { GIT_CLONEMSISENSOR2MODEL } from '../modules/local/git/clonemsisensor2model/main'
 include { MSISENSOR2_MSI } from '../modules/nf-core/msisensor2/msi/main'
@@ -124,16 +127,65 @@ workflow TWISTCGP {
     ch_versions = ch_versions.mix(GATK4_MUTECT2.out.versions.first())
 
     //
+    // MODULE: GATK4/LEARNREADORIENTATIONMODEL
+    // Learns strand artifact priors from f1r2 counts to filter orientation bias artifacts (e.g. FFPE deamination)
+    //
+    GATK4_LEARNREADORIENTATIONMODEL(GATK4_MUTECT2.out.f1r2)
+
+    //
+    // MODULE: GATK4/GETPILEUPSUMMARIES
+    // Summarizes read support for known variant sites across panel to estimate cross-sample contamination
+    // If no germline resource is provided, the filtered channel is empty and the process won't run
+    //
+    ch_germline_resource_pileup = ch_pop_germline_resource
+        .filter { _meta, vcf -> vcf != [] }
+        .map { _meta, vcf -> vcf }
+    ch_germline_resource_pileup_tbi = ch_pop_germline_resource_tbi
+        .filter { _meta, tbi -> tbi != [] }
+        .map { _meta, tbi -> tbi }
+
+    ch_pileup_in = ch_bam_and_index
+        .map { meta, bam, bai -> tuple(meta, bam, bai, targets[1]) }
+    GATK4_GETPILEUPSUMMARIES(
+        ch_pileup_in,
+        ch_fasta,
+        ch_fasta_fai,
+        ch_dict,
+        ch_germline_resource_pileup,
+        ch_germline_resource_pileup_tbi,
+    )
+
+    //
+    // MODULE: GATK4/CALCULATECONTAMINATION
+    // Estimates cross-sample contamination from pileup summaries
+    //
+    ch_contamination_in = GATK4_GETPILEUPSUMMARIES.out.table
+        .map { meta, table -> tuple(meta, table, []) } // no matched normal
+    GATK4_CALCULATECONTAMINATION(ch_contamination_in)
+
+    //
     // MODULE: GATK4/FILTERMUTECTCALLS
     //
-    ch_filtermutect_in = GATK4_MUTECT2.out.vcf
+    // When contamination estimation was skipped (no germline resource), provide empty placeholders
+    // so samples still flow through to FilterMutectCalls
+    ch_mutect2_samples = GATK4_MUTECT2.out.vcf
         .join(GATK4_MUTECT2.out.tbi)
         .join(GATK4_MUTECT2.out.stats)
-        .map { meta, vcf, tbi, stats ->
+        .join(GATK4_LEARNREADORIENTATIONMODEL.out.artifactprior)
+
+    ch_filtermutect_in = params.population_germline_vcf
+        ? ch_mutect2_samples
+            .join(GATK4_CALCULATECONTAMINATION.out.segmentation)
+            .join(GATK4_CALCULATECONTAMINATION.out.contamination)
+        : ch_mutect2_samples
+            .map { meta, vcf, tbi, stats, artifactprior -> tuple(meta, vcf, tbi, stats, artifactprior, [], []) }
+
+    ch_filtermutect_in = ch_filtermutect_in
+        .map { meta, vcf, tbi, stats, artifactprior, segmentation, contamination ->
             tuple(meta, vcf, tbi, stats,
-                [], // orientationbias (unused)
-                [], // segmentation (unused)
-                [], // contamination table (unused)
+                artifactprior, // orientationbias
+                segmentation, // segmentation table
+                contamination, // contamination table
                 [], // contamination estimate (unused)
             )
         }

@@ -3,6 +3,7 @@ MSIsensor-pro is available for [MSIsensor-pro licensed users](https://github.com
 
 > [!IMPORTANT]
 > `--msisensor_scan` is interpreted differently depending on the selected MSI tool:
+>
 > - **MSIsensor2 mode (default):** provide a scan list (`msisensor2 scan` output).
 > - **MSIsensor-pro mode (`--use_msisensor_pro_licensed`):** provide a baseline file for `msisensor-pro pro` (not raw `msisensor-pro scan` output).
 

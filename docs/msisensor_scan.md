@@ -1,4 +1,4 @@
-MSIsensor2 is the default microsattelite instability detection tool used in the pipeline.
+MSIsensor2 is the default microsatellite instability detection tool used in the pipeline.
 MSIsensor-pro is available for [MSIsensor-pro licensed users](https://github.com/xjtu-omics/msisensor-pro/blob/master/LICENSE).
 
 > [!IMPORTANT]

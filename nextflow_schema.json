@@ -249,8 +249,8 @@
                     "type": "string",
                     "fa_icon": "fas fa-copy",
                     "exists": true,
-                    "description": "Path to msisensor2 (or msisensor-pro) scan file.",
-                    "help_text": "**NB** If none provided, will be generated automatically from the FASTA reference. Combine with `--save_reference` to save for future runs.",
+                    "description": "Path to MSIsensor2 scan list, or MSIsensor-pro scan/baseline file when `--use_msisensor_pro_licensed` is enabled.",
+                    "help_text": "**NB** If none provided, the pipeline will generate a scan list from the FASTA reference. In MSIsensor-pro mode, this input may be either an MSIsensor-pro scan list or an MSIsensor-pro baseline file.",
                     "hidden": true
                 },
                 "msisensor2_model_name": {

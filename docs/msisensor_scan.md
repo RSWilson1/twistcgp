@@ -1,5 +1,11 @@
-MSIsensor2 is the default microsattelite instability detection tool used in the pipeline.
+MSIsensor2 is the default microsatellite instability detection tool used in the pipeline.
 MSIsensor-pro is available for [MSIsensor-pro licensed users](https://github.com/xjtu-omics/msisensor-pro/blob/master/LICENSE).
+
+> [!IMPORTANT]
+> `--msisensor_scan` is interpreted differently depending on the selected MSI tool:
+>
+> - **MSIsensor2 mode (default):** provide a scan list (`msisensor2 scan` output).
+> - **MSIsensor-pro mode (`--use_msisensor_pro_licensed`):** provide either an MSIsensor-pro scan list (`msisensor-pro scan` output) or a baseline file (`msisensor-pro baseline` output).
 
 # Steps to Generate a MSIsensor2 Scan List
 
@@ -28,7 +34,7 @@ Models are available from the [msisensor2 github](https://github.com/niu-lab/msi
 You can select a models for a specific genome using the `--msisensor2_model_name` parameter.
 The default is `hg38`.
 
-# Steps to Generate a MSIsensor-pro Scan List
+# Steps to Generate MSIsensor-pro Inputs for `--msisensor_scan`
 
 > [!IMPORTANT]
 > [MSIsensor-pro requires a license for commercial use.](https://github.com/xjtu-omics/msisensor-pro/blob/master/LICENSE)
@@ -45,5 +51,23 @@ The default is `hg38`.
 ```console
 msisensor-pro scan \
         -d GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.fasta \
-        -o GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensor2_scan.list
+        -o GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_scan.list
+```
+
+4. Run `msisensor-pro pro` on a cohort of normal samples using the scan file above as `-d` and collect each sample's `*_all` output.
+
+5. (Optional) Build a baseline:
+
+```console
+msisensor-pro baseline \
+        -d GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_scan.list \
+        -i normal_samples_pro_all.txt \
+        -o GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_baseline.list
+```
+
+6. Use either the scan list (step 3) or the baseline file (step 5) with this pipeline:
+
+```console
+--use_msisensor_pro_licensed \
+--msisensor_scan GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_scan.list
 ```

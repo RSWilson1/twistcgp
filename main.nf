@@ -197,7 +197,7 @@ workflow FULCRUMGENOMICS_TWISTCGP {
     ch_snpeff_cache = params.snpeff_cache
         ? Channel.fromPath(params.snpeff_cache).map { it -> [[id: 'snpeff_cache'], it] }.collect()
         : PREPARE_ANNOTATION_DB.out.snpeff_cache
-    if (params.ensemblvep_cache && params.ensemblvep_cache ==~ /(?i).*\.(tar|tar\.gz|tgz)$/) {
+    if (params.ensemblvep_cache && params.ensemblvep_cache ==~ /(?i).*\.(tar\.gz|tgz|tar)$/) {
         EXTRACT_VEP_CACHE_TARBALL(
             Channel.fromPath(params.ensemblvep_cache).map { it -> [[id: 'vep_cache_tarball'], it] }
         )

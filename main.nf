@@ -19,6 +19,28 @@ include { PIPELINE_COMPLETION } from './subworkflows/local/utils_nfcore_twistcgp
 include { PREPARE_GENOME } from './subworkflows/local/prepare_genome'
 include { PREPARE_ANNOTATION_DB } from './subworkflows/local/prepare_annotation_db'
 include { PREPARE_INDICES } from './subworkflows/local/prepare_indices'
+
+process EXTRACT_VEP_CACHE_TARBALL {
+    tag "$meta.id"
+    label 'process_single'
+
+    input:
+    tuple val(meta), path(cache_tarball)
+
+    output:
+    tuple val(meta), path('vep_cache'), emit: cache
+
+    script:
+    """
+    mkdir vep_cache
+    tar -xf $cache_tarball -C vep_cache
+    """
+
+    stub:
+    """
+    mkdir vep_cache
+    """
+}
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -166,9 +188,16 @@ workflow FULCRUMGENOMICS_TWISTCGP {
     ch_snpeff_cache = params.snpeff_cache
         ? Channel.fromPath(params.snpeff_cache).map { it -> [[id: 'snpeff_cache'], it] }.collect()
         : PREPARE_ANNOTATION_DB.out.snpeff_cache
-    ch_vep_cache = params.ensemblvep_cache
-        ? Channel.fromPath(params.ensemblvep_cache).map { it -> [[id: 'vep_cache'], it] }.collect()
-        : PREPARE_ANNOTATION_DB.out.ensemblvep_cache
+    if (params.ensemblvep_cache && params.ensemblvep_cache ==~ /(?i).*\\.(tar|tar\\.gz|tgz)$/) {
+        EXTRACT_VEP_CACHE_TARBALL(
+            Channel.fromPath(params.ensemblvep_cache).map { it -> [[id: 'vep_cache_tarball'], it] }
+        )
+        ch_vep_cache = EXTRACT_VEP_CACHE_TARBALL.out.cache.collect()
+    } else {
+        ch_vep_cache = params.ensemblvep_cache
+            ? Channel.fromPath(params.ensemblvep_cache).map { it -> [[id: 'vep_cache'], it] }.collect()
+            : PREPARE_ANNOTATION_DB.out.ensemblvep_cache
+    }
     ch_msi_scan = params.msisensor_scan
         ? Channel.fromPath(params.msisensor_scan).map { it -> [[id: 'scan'], it] }.collect()
         : PREPARE_GENOME.out.msi_scan

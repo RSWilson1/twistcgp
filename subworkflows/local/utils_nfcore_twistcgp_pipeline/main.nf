@@ -172,7 +172,20 @@ def samplesheetToListLocal(input_path) {
             error("Missing required fastq_1 in ${input_path} for sample '${sample}'")
         }
 
-        rows << [[id: sample], fastq1, fastq2 ?: null]
+        def fastq1Path = file(fastq1)
+        if (!fastq1Path.exists()) {
+            error("FASTQ file not found for sample '${sample}': ${fastq1}")
+        }
+
+        def fastq2Path = null
+        if (fastq2) {
+            fastq2Path = file(fastq2)
+            if (!fastq2Path.exists()) {
+                error("FASTQ file not found for sample '${sample}': ${fastq2}")
+            }
+        }
+
+        rows << [[id: sample], fastq1Path, fastq2Path]
     }
 
     return rows

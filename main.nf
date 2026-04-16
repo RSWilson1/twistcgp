@@ -33,8 +33,16 @@ process EXTRACT_VEP_CACHE_TARBALL {
     script:
     """
     set -euo pipefail
-    mkdir vep_cache
-    tar -xf $cache_tarball -C vep_cache
+    mkdir vep_cache _vep_cache_extract
+    tar -xf $cache_tarball -C _vep_cache_extract
+
+    shopt -s dotglob nullglob
+    extracted=( _vep_cache_extract/* )
+    if [[ \${#extracted[@]} -eq 1 && -d "\${extracted[0]}" ]]; then
+        mv "\${extracted[0]}"/* vep_cache/
+    else
+        mv _vep_cache_extract/* vep_cache/
+    fi
     """
 
     stub:

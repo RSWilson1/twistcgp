@@ -95,7 +95,7 @@ See [docs/msisensor_scan.md](/docs/msisensor_scan.md) for details.
 Additionally, the MSIsensor2 scan list can be saved to the output directory for future use by supplying the `--save_reference` parameter.
 Subsequently, you may pass the scan file using `--msisensor_scan results/reference/reference.msisensor_scan.list`.
 
-When running with `--use_msisensor_pro_licensed`, `--msisensor_scan` must point to an MSIsensor-pro baseline file (not raw `msisensor-pro scan` output).
+When running with `--use_msisensor_pro_licensed`, `--msisensor_scan` may point to either an MSIsensor-pro scan list or an MSIsensor-pro baseline file.
 
 </details>
 

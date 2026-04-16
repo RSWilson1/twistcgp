@@ -169,9 +169,6 @@ workflow FULCRUMGENOMICS_TWISTCGP {
     ch_vep_cache = params.ensemblvep_cache
         ? Channel.fromPath(params.ensemblvep_cache).map { it -> [[id: 'vep_cache'], it] }.collect()
         : PREPARE_ANNOTATION_DB.out.ensemblvep_cache
-    if (params.use_msisensor_pro_licensed && !params.msisensor_scan) {
-        error "MSIsensor-pro mode requires --msisensor_scan to point to a baseline microsatellite file. See docs/msisensor_scan.md."
-    }
     ch_msi_scan = params.msisensor_scan
         ? Channel.fromPath(params.msisensor_scan).map { it -> [[id: 'scan'], it] }.collect()
         : PREPARE_GENOME.out.msi_scan

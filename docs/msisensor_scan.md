@@ -5,7 +5,7 @@ MSIsensor-pro is available for [MSIsensor-pro licensed users](https://github.com
 > `--msisensor_scan` is interpreted differently depending on the selected MSI tool:
 >
 > - **MSIsensor2 mode (default):** provide a scan list (`msisensor2 scan` output).
-> - **MSIsensor-pro mode (`--use_msisensor_pro_licensed`):** provide a baseline file for `msisensor-pro pro` (not raw `msisensor-pro scan` output).
+> - **MSIsensor-pro mode (`--use_msisensor_pro_licensed`):** provide either an MSIsensor-pro scan list (`msisensor-pro scan` output) or a baseline file (`msisensor-pro baseline` output).
 
 # Steps to Generate a MSIsensor2 Scan List
 
@@ -34,7 +34,7 @@ Models are available from the [msisensor2 github](https://github.com/niu-lab/msi
 You can select a models for a specific genome using the `--msisensor2_model_name` parameter.
 The default is `hg38`.
 
-# Steps to Generate a MSIsensor-pro Baseline File
+# Steps to Generate MSIsensor-pro Inputs for `--msisensor_scan`
 
 > [!IMPORTANT]
 > [MSIsensor-pro requires a license for commercial use.](https://github.com/xjtu-omics/msisensor-pro/blob/master/LICENSE)
@@ -56,7 +56,7 @@ msisensor-pro scan \
 
 4. Run `msisensor-pro pro` on a cohort of normal samples using the scan file above as `-d` and collect each sample's `*_all` output.
 
-5. Build the baseline:
+5. (Optional) Build a baseline:
 
 ```console
 msisensor-pro baseline \
@@ -65,9 +65,9 @@ msisensor-pro baseline \
         -o GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_baseline.list
 ```
 
-6. Use the resulting baseline file with this pipeline:
+6. Use either the scan list (step 3) or the baseline file (step 5) with this pipeline:
 
 ```console
 --use_msisensor_pro_licensed \
---msisensor_scan GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_baseline.list
+--msisensor_scan GRCh38_GIABv3_no_alt_analysis_set_maskedGRC_decoys_MAP2K3_KMT2C_KCNJ18.msisensorpro_scan.list
 ```

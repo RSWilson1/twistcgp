@@ -18,7 +18,6 @@ include { PICARD_MARKDUPLICATES } from '../modules/nf-core/picard/markduplicates
 include { PICARD_COLLECTMULTIPLEMETRICS } from '../modules/nf-core/picard/collectmultiplemetrics'
 include { PICARD_COLLECTHSMETRICS } from '../modules/nf-core/picard/collecthsmetrics/main'
 include { PICARD_INTERVALLISTTOBED } from '../modules/local/picard/intervallisttobed'
-include { paramsSummaryMap } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_twistcgp_pipeline'
@@ -248,10 +247,7 @@ workflow TWISTCGP {
         ? Channel.fromPath(params.multiqc_logo, checkIfExists: true)
         : Channel.empty()
 
-    summary_params = paramsSummaryMap(
-        workflow,
-        parameters_schema: "nextflow_schema.json"
-    )
+    summary_params = paramsSummaryMapFallback()
     ch_workflow_summary = Channel.value(paramsSummaryMultiqc(summary_params))
     ch_multiqc_files = ch_multiqc_files.mix(
         ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml')
@@ -271,4 +267,14 @@ workflow TWISTCGP {
     emit:
     multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
     versions = ch_versions // channel: [ path(versions.yml) ]
+}
+
+def paramsSummaryMapFallback() {
+    [
+        'Pipeline run options': [
+            profile: workflow.profile,
+            outdir: params.outdir,
+            input: params.input,
+        ],
+    ]
 }

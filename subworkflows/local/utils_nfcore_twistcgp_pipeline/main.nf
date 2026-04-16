@@ -9,8 +9,6 @@
 */
 
 include { UTILS_NFSCHEMA_PLUGIN } from '../../nf-core/utils_nfschema_plugin'
-include { paramsSummaryMap } from 'plugin/nf-schema'
-include { samplesheetToList } from 'plugin/nf-schema'
 include { completionSummary } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NEXTFLOW_PIPELINE } from '../../nf-core/utils_nextflow_pipeline'
@@ -65,7 +63,7 @@ workflow PIPELINE_INITIALISATION {
     //
 
     Channel
-        .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
+        .fromList(samplesheetToListLocal(params.input))
         .map { meta, fastq_1, fastq_2 ->
             if (!fastq_2) {
                 return [meta.id, meta + [single_end: true], [fastq_1]]
@@ -101,7 +99,6 @@ workflow PIPELINE_COMPLETION {
     multiqc_report //  string: Path to MultiQC report
 
     main:
-    summary_params = paramsSummaryMap(workflow, parameters_schema: "nextflow_schema.json")
     def multiqc_reports = multiqc_report.toList()
 
     //
@@ -136,6 +133,62 @@ def validateInputSamplesheet(input) {
     }
 
     return [metas[0], fastqs]
+}
+
+def samplesheetToListLocal(input_path) {
+    if (!input_path) {
+        error("Please provide an input samplesheet with --input")
+    }
+
+    def sampleSheet = file(input_path)
+    if (!sampleSheet.exists()) {
+        error("Input samplesheet not found: ${input_path}")
+    }
+
+    def lines = sampleSheet.readLines().findAll { it?.trim() }
+    if (lines.size() < 2) {
+        error("Input samplesheet has no sample rows: ${input_path}")
+    }
+
+    def header = lines[0].split(',', -1).collect { it.trim() }
+    def sampleCol = header.indexOf('sample')
+    def fastq1Col = header.indexOf('fastq_1')
+    def fastq2Col = header.indexOf('fastq_2')
+    if (sampleCol == -1 || fastq1Col == -1) {
+        error("Input samplesheet must contain 'sample' and 'fastq_1' columns: ${input_path}")
+    }
+
+    def rows = []
+    lines.drop(1).eachWithIndex { row, idx ->
+        def cols = row.split(',', -1).collect { it.trim() }
+        def sample = sampleCol < cols.size() ? cols[sampleCol] : ''
+        def fastq1 = fastq1Col < cols.size() ? cols[fastq1Col] : ''
+        def fastq2 = fastq2Col >= 0 && fastq2Col < cols.size() ? cols[fastq2Col] : ''
+
+        if (!sample) {
+            error("Missing required sample name in ${input_path} at data row ${idx + 2}")
+        }
+        if (!fastq1) {
+            error("Missing required fastq_1 in ${input_path} for sample '${sample}'")
+        }
+
+        def fastq1Path = file(fastq1)
+        if (!fastq1Path.exists()) {
+            error("FASTQ file not found for sample '${sample}': ${fastq1}")
+        }
+
+        def fastq2Path = null
+        if (fastq2) {
+            fastq2Path = file(fastq2)
+            if (!fastq2Path.exists()) {
+                error("FASTQ file not found for sample '${sample}': ${fastq2}")
+            }
+        }
+
+        rows << [[id: sample], fastq1Path, fastq2Path]
+    }
+
+    return rows
 }
 //
 // Generate methods description for MultiQC

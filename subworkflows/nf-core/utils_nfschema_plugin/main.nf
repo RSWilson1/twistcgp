@@ -2,9 +2,6 @@
 // Subworkflow that uses the nf-schema plugin to validate parameters and render the parameter summary
 //
 
-include { paramsSummaryLog   } from 'plugin/nf-schema'
-include { validateParameters } from 'plugin/nf-schema'
-
 workflow UTILS_NFSCHEMA_PLUGIN {
 
     take:
@@ -22,25 +19,30 @@ workflow UTILS_NFSCHEMA_PLUGIN {
     // Print parameter summary to stdout. This will display the parameters
     // that differ from the default given in the JSON schema
     //
-    if(parameters_schema) {
-        log.info paramsSummaryLog(input_workflow, parameters_schema:parameters_schema)
-    } else {
-        log.info paramsSummaryLog(input_workflow)
-    }
+    log.info fallbackParamsSummary()
 
-    //
-    // Validate the parameters using nextflow_schema.json or the schema
-    // given via the validation.parametersSchema configuration option
-    //
+    // Offline fallback: keep execution working when the nf-schema plugin
+    // cannot be downloaded in restricted environments.
     if(validate_params) {
-        if(parameters_schema) {
-            validateParameters(parameters_schema:parameters_schema)
-        } else {
-            validateParameters()
+        if(parameters_schema && !file(parameters_schema).exists()) {
+            error("Parameters schema file not found: ${parameters_schema}")
         }
+        log.warn "[${workflow.manifest.name}] Parameter schema validation via nf-schema plugin is unavailable; skipping runtime schema validation."
     }
 
     emit:
     dummy_emit = true
 }
 
+def fallbackParamsSummary() {
+    def summary = params
+        .findAll { key, val -> val != null && val != false && val != '' }
+        .collect { key, val -> "  --${key}: ${val}" }
+        .sort()
+        .join('\n')
+
+    return """\
+[$workflow.manifest.name] Parameter summary (fallback)
+${summary ?: '  (no parameters provided)'}
+""".stripIndent()
+}

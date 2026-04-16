@@ -99,7 +99,7 @@ Subsequently, you may pass the MSIsensor scan file using `--msisensor_scan resul
 
 <details> <summary>Pre-Generate Variant Annotation Caches</summary>
 
-SnpEff and Ensembl VEP require many large files known as a cache with which to annotate variants. To use pre-downloaded caches for variant annotation, supply the parameters `--snpeff_cache` and/or `--ensemblvep_cache` with the path to the root of the annotation cache folder. If a cache is not provided, the pipeline will automatically download it (which will add computation time). For details on how to generate each cache see [docs/variant_annotation.md](/docs/variant_annotation.md).
+SnpEff and Ensembl VEP require many large files known as a cache with which to annotate variants. To use pre-downloaded caches for variant annotation, supply `--snpeff_cache` with the path to the root of the SnpEff annotation cache folder, and `--ensemblvep_cache` with either the path to the root of the Ensembl VEP cache folder or a VEP cache tarball (`.tar`, `.tar.gz`, `.tgz`). If a cache is not provided, the pipeline will automatically download it (which will add computation time). For details on how to generate each cache see [docs/variant_annotation.md](/docs/variant_annotation.md).
 
 Additionally, the caches can be saved to the output directory for future use by supplying the `--save_reference` parameter.
 Subsequently, you may pass the caches using `--snpeff_cache results/reference/snpeff_cache/GRCh38.105` and `--ensemblvep_cache results/reference/ensemblvep_cache/vep_cache`.

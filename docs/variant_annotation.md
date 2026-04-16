@@ -31,7 +31,11 @@ Please note that this download is rate-limited, and will take much longer than `
 vep_install -a cf -s homo_sapiens -y GRCh38 -c ~/vep --CONVERT
 ```
 
-3. Pass the cache to the pipeline:
+3. Pass the cache to the pipeline as either:
+   - the extracted cache root directory (for example, `~/vep/`), or
+   - the downloaded tarball directly (for example, `homo_sapiens_vep_114_GRCh38.tar.gz`).
+
+Using the extracted cache directory:
 
 ```console
 nextflow run twistcgp/main.nf \
@@ -52,6 +56,19 @@ $ tree -L 1 ~/vep/
 ~/vep/
 ├── homo_sapiens
 │   └── 114_GRCh38
+```
+
+Using the downloaded tarball directly:
+
+```console
+nextflow run twistcgp/main.nf \
+   -profile <docker/singularity/conda> \
+   --fasta hg38.fa \
+   --input samplesheet.csv \
+   --baits baits.bed \
+   --targets targets.bed \
+   --ensemblvep_cache /path/to/homo_sapiens_vep_114_GRCh38.tar.gz \
+   --outdir <OUTDIR>
 ```
 
 ## SnpEff cache
